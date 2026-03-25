@@ -67,8 +67,9 @@ class _TaskListScreenState extends State<TaskListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 80,
-        title: Column(
+        backgroundColor: const Color.fromARGB(255, 22, 0, 0),
+        toolbarHeight: 50,
+        title: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -76,15 +77,16 @@ class _TaskListScreenState extends State<TaskListScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Colors.grey,
               ),
             ),
+            SizedBox(width: 70,),
             const Text(
               'My Tasks',
               style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
               ),
             ),
           ],

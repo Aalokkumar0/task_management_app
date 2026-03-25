@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  static const _seed = Color(0xFF6366F1); // Modern Indigo (slightly vibrant)
+  static const _seed = Color.fromARGB(128, 0, 4, 255); // Modern Indigo (slightly vibrant)
 
   // Status colours (more vibrant)
   static const colorTodo = Color(0xFF94A3B8);
@@ -27,12 +27,12 @@ class AppTheme {
         ),
 
         // 📱 AppBar (glass + modern)
-        appBarTheme: const AppBarTheme(
+        appBarTheme: AppBarTheme(
           centerTitle: false,
           elevation: 0,
           scrolledUnderElevation: 0,
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.black,
+          backgroundColor: Color.fromARGB(181, 92, 46, 46),
+          foregroundColor: Colors.white,
           titleTextStyle: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -87,7 +87,7 @@ class AppTheme {
 
         // 🟣 Floating Button
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: _seed,
+          backgroundColor: Color.fromARGB(255, 0, 0, 0),
           foregroundColor: Color.fromARGB(255, 171, 155, 155),
           elevation: 6,
         ),
