@@ -38,7 +38,7 @@ class _TaskListScreenState extends State<TaskListScreen> {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, Task task) async {
+  Future<bool?> _confirmDelete(BuildContext context, Task task) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -61,40 +61,69 @@ class _TaskListScreenState extends State<TaskListScreen> {
     if (confirmed == true && context.mounted) {
       context.read<TaskProvider>().deleteTask(task.id);
     }
+    return confirmed;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 22, 0, 0),
-        toolbarHeight: 50,
-        title: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Hello there 👋',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey,
+        toolbarHeight: 80,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                Theme.of(context).scaffoldBackgroundColor,
+              ],
+            ),
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                width: 1,
               ),
             ),
-            SizedBox(width: 70,),
-            const Text(
-              'My Tasks',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.5,
+          ),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(top: 10.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hello there 👋',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              const Text(
+                'My Tasks',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
         ),
         actions: const [
-          _SavingIndicator(),
-          SizedBox(width: 16),
-          SizedBox(width: 16),
+          Padding(
+            padding: EdgeInsets.only(top: 10.0, right: 16.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _StreakBadge(),
+                SizedBox(width: 8),
+                _SavingIndicator(),
+              ],
+            ),
+          ),
         ],
       ),
       body: Column(
@@ -107,10 +136,8 @@ class _TaskListScreenState extends State<TaskListScreen> {
               child: _TaskList(onEdit: _openEdit, onDelete: _confirmDelete)),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: _AnimatedNewTaskButton(
         onPressed: () => _openCreate(context),
-        icon: const Icon(Icons.add),
-        label: const Text('New Task'),
       ),
     );
   }
@@ -143,6 +170,47 @@ class _SavingIndicator extends StatelessWidget {
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+}
+
+// 🔥 Streak Badge
+class _StreakBadge extends StatelessWidget {
+  const _StreakBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<TaskProvider>(
+      builder: (context, provider, child) {
+        final streak = provider.completedTasksCount;
+        if (streak == 0) return const SizedBox.shrink();
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.orange.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$streak ',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orange,
+                ),
+              ),
+              const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 16),
+            ],
+          ),
         );
       },
     );
@@ -212,7 +280,7 @@ class _FilterChips extends StatelessWidget {
 // 📋 Task List
 class _TaskList extends StatelessWidget {
   final void Function(BuildContext, Task) onEdit;
-  final void Function(BuildContext, Task) onDelete;
+  final Future<bool?> Function(BuildContext, Task) onDelete;
 
   const _TaskList({required this.onEdit, required this.onDelete});
 
@@ -223,41 +291,7 @@ class _TaskList extends StatelessWidget {
         final tasks = provider.filteredTasks;
 
         if (tasks.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.task_rounded,
-                    size: 80,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: 0.2)),
-                const SizedBox(height: 16),
-                Text(
-                  'No tasks found',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.6),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Enjoy your free time or add a new task!',
-                  style: TextStyle(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.4),
-                  ),
-                ),
-              ],
-            ),
-          );
+          return const _AnimatedEmptyState();
         }
 
         return ReorderableListView.builder(
@@ -274,18 +308,195 @@ class _TaskList extends StatelessWidget {
             return ReorderableDragStartListener(
               key: ValueKey(task.id),
               index: i,
-              child: TaskCard(
-                task: task,
-                isBlocked: blocked,
-                blockerTitle: blocker?.title,
-                searchQuery: provider.searchQuery,
-                onTap: () => onEdit(context, task),
-                onDelete: () => onDelete(context, task),
+              child: Dismissible(
+                key: ValueKey('dismiss_${task.id}'),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade400,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 24),
+                  child: const Icon(Icons.delete_sweep_rounded, color: Colors.white, size: 30),
+                ),
+                confirmDismiss: (_) => onDelete(context, task),
+                onDismissed: (_) {
+                  // Task is deleted inside _confirmDelete
+                },
+                child: TaskCard(
+                  task: task,
+                  isBlocked: blocked,
+                  blockerTitle: blocker?.title,
+                  searchQuery: provider.searchQuery,
+                  onTap: () => onEdit(context, task),
+                  onToggleDone: (bool isDone) {
+                    provider.updateTask(task.copyWith(
+                      status: isDone ? TaskStatus.done : TaskStatus.todo,
+                    ));
+                  },
+                ),
               ),
             );
           },
         );
       },
+    );
+  }
+}
+
+// 🌟 Animated New Task Button
+class _AnimatedNewTaskButton extends StatefulWidget {
+  final VoidCallback onPressed;
+  const _AnimatedNewTaskButton({required this.onPressed});
+
+  @override
+  State<_AnimatedNewTaskButton> createState() => _AnimatedNewTaskButtonState();
+}
+
+class _AnimatedNewTaskButtonState extends State<_AnimatedNewTaskButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  bool _isHovered = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) {
+          _controller.reverse();
+          widget.onPressed();
+        },
+        onTapCancel: () => _controller.reverse(),
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: _isHovered ? 0.5 : 0.3),
+                  blurRadius: _isHovered ? 14 : 8,
+                  offset: const Offset(0, 4),
+                )
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add_rounded, color: Colors.white, size: 24),
+                SizedBox(width: 8),
+                Text(
+                  'New Task',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// 📋 Animated Empty State Box
+class _AnimatedEmptyState extends StatelessWidget {
+  const _AnimatedEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          child: child,
+        );
+      },
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.all(40),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              width: 2,
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.task_alt_rounded,
+                  size: 60,
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.6),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'No tasks found',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.8),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Enjoy your free time or add a new task!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

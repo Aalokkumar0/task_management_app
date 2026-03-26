@@ -19,6 +19,8 @@ class TaskProvider extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   TaskStatus? get filterStatus => _filterStatus;
 
+  int get completedTasksCount => _tasks.where((t) => t.isDone).length;
+
   List<Task> get filteredTasks {
     List<Task> result = List<Task>.from(_tasks);
 
