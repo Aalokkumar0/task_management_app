@@ -475,9 +475,10 @@ class _AnimatedEmptyState extends StatelessWidget {
         );
       },
       child: Center(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.all(40),
+        child: SingleChildScrollView(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            padding: const EdgeInsets.all(40),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(30),
@@ -523,6 +524,7 @@ class _AnimatedEmptyState extends StatelessWidget {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
