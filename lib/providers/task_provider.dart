@@ -103,6 +103,7 @@ class TaskProvider extends ChangeNotifier {
     required DateTime dueDate,
     required TaskStatus status,
     String? blockedById,
+    DateTime? recurrenceEndDate,
   }) async {
     _isSaving = true;
     notifyListeners();
@@ -118,49 +119,11 @@ class TaskProvider extends ChangeNotifier {
       status: status,
       blockedById: blockedById,
       sortOrder: _tasks.length,
+      recurrenceEndDate: recurrenceEndDate,
     );
 
     await DatabaseHelper.instance.insertTask(task);
     _tasks.add(task);
-
-    _isSaving = false;
-    notifyListeners();
-  }
-
-  Future<void> createMultipleTasks({
-    required String title,
-    required String description,
-    required DateTime startDate,
-    required DateTime endDate,
-    required TaskStatus status,
-    String? blockedById,
-  }) async {
-    _isSaving = true;
-    notifyListeners();
-
-    await Future.delayed(const Duration(seconds: 2));
-
-    DateTime current = startDate;
-    final newTasks = <Task>[];
-    int sortOffset = _tasks.length;
-
-    while (current.isBefore(endDate) || current.isAtSameMomentAs(endDate)) {
-      final task = Task(
-        id: const Uuid().v4(),
-        title: title.trim(),
-        description: description.trim(),
-        dueDate: current,
-        status: status,
-        blockedById: blockedById,
-        sortOrder: sortOffset++,
-      );
-      newTasks.add(task);
-      await DatabaseHelper.instance.insertTask(task);
-      
-      current = DateTime(current.year, current.month, current.day + 1, current.hour, current.minute);
-    }
-
-    _tasks.addAll(newTasks);
 
     _isSaving = false;
     notifyListeners();
@@ -174,10 +137,35 @@ class TaskProvider extends ChangeNotifier {
     // Simulated 2-second network/API delay (as required)
     await Future.delayed(const Duration(seconds: 2));
 
-    await DatabaseHelper.instance.updateTask(updatedTask);
     final idx = _tasks.indexWhere((t) => t.id == updatedTask.id);
     if (idx != -1) {
+      final oldTask = _tasks[idx];
       _tasks[idx] = updatedTask;
+      await DatabaseHelper.instance.updateTask(updatedTask);
+
+      if (!oldTask.isDone && updatedTask.isDone && updatedTask.recurrenceEndDate != null) {
+        final nextDate = updatedTask.dueDate.add(const Duration(days: 1));
+        final nextDateBase = DateTime(nextDate.year, nextDate.month, nextDate.day);
+        final endDateBase = DateTime(
+            updatedTask.recurrenceEndDate!.year,
+            updatedTask.recurrenceEndDate!.month,
+            updatedTask.recurrenceEndDate!.day);
+
+        if (nextDateBase.isBefore(endDateBase) || nextDateBase.isAtSameMomentAs(endDateBase)) {
+          final nextTask = Task(
+            id: const Uuid().v4(),
+            title: updatedTask.title,
+            description: updatedTask.description,
+            dueDate: nextDate,
+            status: TaskStatus.todo,
+            blockedById: updatedTask.blockedById,
+            sortOrder: _tasks.length,
+            recurrenceEndDate: updatedTask.recurrenceEndDate,
+          );
+          await DatabaseHelper.instance.insertTask(nextTask);
+          _tasks.add(nextTask);
+        }
+      }
     }
 
     _isSaving = false;

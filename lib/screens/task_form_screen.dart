@@ -97,24 +97,14 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       );
       await provider.updateTask(updated);
     } else {
-      if (_isRepeatingDaily && _endDate != null) {
-        await provider.createMultipleTasks(
-          title: _titleCtrl.text.trim(),
-          description: _descCtrl.text.trim(),
-          startDate: _dueDate,
-          endDate: _endDate!,
-          status: _status,
-          blockedById: _blockedById,
-        );
-      } else {
-        await provider.createTask(
-          title: _titleCtrl.text.trim(),
-          description: _descCtrl.text.trim(),
-          dueDate: _dueDate,
-          status: _status,
-          blockedById: _blockedById,
-        );
-      }
+      await provider.createTask(
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        dueDate: _dueDate,
+        status: _status,
+        blockedById: _blockedById,
+        recurrenceEndDate: _isRepeatingDaily ? _endDate : null,
+      );
       // Clear draft on successful create
       if (mounted) context.read<DraftProvider>().clearDraft();
     }

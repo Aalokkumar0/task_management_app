@@ -24,6 +24,7 @@ class Task {
   final TaskStatus status;
   final String? blockedById;
   final int sortOrder;
+  final DateTime? recurrenceEndDate;
 
   const Task({
     required this.id,
@@ -33,6 +34,7 @@ class Task {
     required this.status,
     this.blockedById,
     this.sortOrder = 0,
+    this.recurrenceEndDate,
   });
 
   bool get isDone => status == TaskStatus.done;
@@ -46,6 +48,7 @@ class Task {
     String? blockedById,
     bool clearBlockedBy = false,
     int? sortOrder,
+    DateTime? recurrenceEndDate,
   }) {
     return Task(
       id: id ?? this.id,
@@ -55,6 +58,7 @@ class Task {
       status: status ?? this.status,
       blockedById: clearBlockedBy ? null : (blockedById ?? this.blockedById),
       sortOrder: sortOrder ?? this.sortOrder,
+      recurrenceEndDate: recurrenceEndDate ?? this.recurrenceEndDate,
     );
   }
 
@@ -67,6 +71,7 @@ class Task {
       'status': status.label,
       'blocked_by_id': blockedById,
       'sort_order': sortOrder,
+      'recurrence_end_date': recurrenceEndDate?.toIso8601String(),
     };
   }
 
@@ -79,6 +84,9 @@ class Task {
       status: TaskStatus.fromString(map['status'] as String),
       blockedById: map['blocked_by_id'] as String?,
       sortOrder: (map['sort_order'] as int?) ?? 0,
+      recurrenceEndDate: map['recurrence_end_date'] != null 
+          ? DateTime.parse(map['recurrence_end_date'] as String) 
+          : null,
     );
   }
 }

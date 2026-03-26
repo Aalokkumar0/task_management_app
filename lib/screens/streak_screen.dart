@@ -38,23 +38,67 @@ class StreakScreen extends StatelessWidget {
                   itemCount: history.length,
                   itemBuilder: (context, i) {
                     final date = history[i];
+                    // Filter tasks completed on this active date
+                    final completedTasks = provider.allTasks.where((task) =>
+                        task.isDone &&
+                        task.dueDate.year == date.year &&
+                        task.dueDate.month == date.month &&
+                        task.dueDate.day == date.day).toList();
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
+                      child: Theme(
+                        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                        child: ExpansionTile(
+                          iconColor: Colors.orange,
+                          collapsedIconColor: Colors.grey,
+                          leading: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check_circle_rounded, color: Colors.green),
                           ),
-                          child: const Icon(Icons.check_circle_rounded, color: Colors.green),
+                          title: Text(
+                            DateFormat('EEEE, MMM d, yyyy').format(date),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            completedTasks.isNotEmpty 
+                                ? '${completedTasks.length} Task${completedTasks.length == 1 ? '' : 's'} Completed' 
+                                : 'Active Day',
+                          ),
+                          children: [
+                            if (completedTasks.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Text('No tasks completed on this day.', style: TextStyle(color: Colors.grey)),
+                              )
+                            else
+                              ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: completedTasks.length,
+                                itemBuilder: (context, index) {
+                                  final task = completedTasks[index];
+                                  return ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
+                                    leading: const Icon(Icons.check_box_rounded, color: Colors.green, size: 20),
+                                    title: Text(
+                                      task.title,
+                                      style: TextStyle(
+                                        decoration: TextDecoration.lineThrough,
+                                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                                      ),
+                                    ),
+                                    dense: true,
+                                  );
+                                },
+                              )
+                          ],
                         ),
-                        title: Text(
-                          DateFormat('EEEE, MMM d, yyyy').format(date),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: const Text('Active Day'),
                       ),
                     );
                   },
