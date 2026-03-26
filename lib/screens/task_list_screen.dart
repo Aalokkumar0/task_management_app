@@ -6,6 +6,7 @@ import '../models/task.dart';
 import '../providers/task_provider.dart';
 import '../widgets/task_card.dart';
 import 'task_form_screen.dart';
+import 'streak_screen.dart';
 
 class TaskListScreen extends StatefulWidget {
   const TaskListScreen({super.key});
@@ -58,9 +59,6 @@ class _TaskListScreenState extends State<TaskListScreen> {
       ),
     );
 
-    if (confirmed == true && context.mounted) {
-      context.read<TaskProvider>().deleteTask(task.id);
-    }
     return confirmed;
   }
 
@@ -176,40 +174,75 @@ class _SavingIndicator extends StatelessWidget {
   }
 }
 
-// 🔥 Streak Badge
-class _StreakBadge extends StatelessWidget {
+// 🔥 Animated Streak Badge
+class _StreakBadge extends StatefulWidget {
   const _StreakBadge();
+
+  @override
+  State<_StreakBadge> createState() => _StreakBadgeState();
+}
+
+class _StreakBadgeState extends State<_StreakBadge> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800))..repeat(reverse: true);
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.25).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<TaskProvider>(
       builder: (context, provider, child) {
-        final streak = provider.completedTasksCount;
+        final streak = provider.dailyStreak;
         if (streak == 0) return const SizedBox.shrink();
 
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.orange.withValues(alpha: 0.3),
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$streak ',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
-                ),
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const StreakScreen()),
+            );
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.orange.withValues(alpha: 0.3),
               ),
-              const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 16),
-            ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '$streak ',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+                ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: const Icon(Icons.local_fire_department_rounded, color: Colors.orange, size: 16),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -294,10 +327,9 @@ class _TaskList extends StatelessWidget {
           return const _AnimatedEmptyState();
         }
 
-        return ReorderableListView.builder(
+        return ListView.builder(
           padding: const EdgeInsets.only(bottom: 100),
           itemCount: tasks.length,
-          onReorder: provider.reorderTasks,
           itemBuilder: (context, i) {
             final task = tasks[i];
             final blocked = provider.isBlocked(task);
@@ -305,38 +337,34 @@ class _TaskList extends StatelessWidget {
                 ? provider.getTaskById(task.blockedById!)
                 : null;
 
-            return ReorderableDragStartListener(
-              key: ValueKey(task.id),
-              index: i,
-              child: Dismissible(
-                key: ValueKey('dismiss_${task.id}'),
-                direction: DismissDirection.endToStart,
-                background: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade400,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.only(right: 24),
-                  child: const Icon(Icons.delete_sweep_rounded, color: Colors.white, size: 30),
+            return Dismissible(
+              key: ValueKey('dismiss_${task.id}'),
+              direction: DismissDirection.endToStart,
+              background: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade400,
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                confirmDismiss: (_) => onDelete(context, task),
-                onDismissed: (_) {
-                  // Task is deleted inside _confirmDelete
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 24),
+                child: const Icon(Icons.delete_sweep_rounded, color: Colors.white, size: 30),
+              ),
+              confirmDismiss: (_) => onDelete(context, task),
+              onDismissed: (_) {
+                context.read<TaskProvider>().deleteTask(task.id);
+              },
+              child: TaskCard(
+                task: task,
+                isBlocked: blocked,
+                blockerTitle: blocker?.title,
+                searchQuery: provider.searchQuery,
+                onTap: () => onEdit(context, task),
+                onToggleDone: (bool isDone) {
+                  provider.updateTask(task.copyWith(
+                    status: isDone ? TaskStatus.done : TaskStatus.todo,
+                  ));
                 },
-                child: TaskCard(
-                  task: task,
-                  isBlocked: blocked,
-                  blockerTitle: blocker?.title,
-                  searchQuery: provider.searchQuery,
-                  onTap: () => onEdit(context, task),
-                  onToggleDone: (bool isDone) {
-                    provider.updateTask(task.copyWith(
-                      status: isDone ? TaskStatus.done : TaskStatus.todo,
-                    ));
-                  },
-                ),
               ),
             );
           },

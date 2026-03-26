@@ -26,6 +26,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   late TaskStatus _status;
   String? _blockedById;
   bool _isSaving = false;
+  bool _isRepeatingDaily = false;
+  DateTime? _endDate;
 
   @override
   void initState() {
@@ -95,13 +97,24 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       );
       await provider.updateTask(updated);
     } else {
-      await provider.createTask(
-        title: _titleCtrl.text.trim(),
-        description: _descCtrl.text.trim(),
-        dueDate: _dueDate,
-        status: _status,
-        blockedById: _blockedById,
-      );
+      if (_isRepeatingDaily && _endDate != null) {
+        await provider.createMultipleTasks(
+          title: _titleCtrl.text.trim(),
+          description: _descCtrl.text.trim(),
+          startDate: _dueDate,
+          endDate: _endDate!,
+          status: _status,
+          blockedById: _blockedById,
+        );
+      } else {
+        await provider.createTask(
+          title: _titleCtrl.text.trim(),
+          description: _descCtrl.text.trim(),
+          dueDate: _dueDate,
+          status: _status,
+          blockedById: _blockedById,
+        );
+      }
       // Clear draft on successful create
       if (mounted) context.read<DraftProvider>().clearDraft();
     }
@@ -209,6 +222,65 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
             ),
 
             const SizedBox(height: 20),
+
+            if (!widget.isEditing) ...[
+              Row(
+                children: [
+                  Switch(
+                    value: _isRepeatingDaily,
+                    onChanged: (v) => setState(() {
+                      _isRepeatingDaily = v;
+                      if (_isRepeatingDaily && _endDate == null) {
+                        _endDate = _dueDate.add(const Duration(days: 30));
+                      }
+                    }),
+                    activeColor: color.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Repeat Daily', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                ],
+              ),
+              if (_isRepeatingDaily) ...[
+                const SizedBox(height: 16),
+                const _FormLabel('End Date'),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                     context: context,
+                     initialDate: _endDate ?? _dueDate.add(const Duration(days: 1)),
+                     firstDate: _dueDate,
+                     lastDate: _dueDate.add(const Duration(days: 365 * 5)),
+                    );
+                    if (picked != null) setState(() => _endDate = picked);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE0E0E0)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.event_repeat_rounded, size: 18, color: color.primary),
+                        const SizedBox(width: 12),
+                        Text(
+                          _endDate != null 
+                              ? DateFormat('EEEE, MMM d, y').format(_endDate!)
+                              : 'Select End Date',
+                          style: theme.textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.w500),
+                        ),
+                        const Spacer(),
+                        Icon(Icons.chevron_right_rounded, color: color.onSurface.withValues(alpha: 0.3)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ],
 
             // ── Status ────────────────────────────────────────────────────
             const _FormLabel('Status'),
