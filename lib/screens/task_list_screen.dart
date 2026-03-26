@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/task.dart';
 import '../providers/task_provider.dart';
 import '../widgets/task_card.dart';
+import '../widgets/calendar_view_widget.dart';
 import 'task_form_screen.dart';
 import 'streak_screen.dart';
 
@@ -17,6 +18,7 @@ class TaskListScreen extends StatefulWidget {
 
 class _TaskListScreenState extends State<TaskListScreen> {
   final _searchController = TextEditingController();
+  bool _isCalendarView = false;
 
   @override
   void dispose() {
@@ -110,30 +112,37 @@ class _TaskListScreenState extends State<TaskListScreen> {
             ],
           ),
         ),
-        actions: const [
+        actions: [
           Padding(
-            padding: EdgeInsets.only(top: 10.0, right: 16.0),
+            padding: const EdgeInsets.only(top: 10.0, right: 16.0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _StreakBadge(),
-                SizedBox(width: 8),
-                _SavingIndicator(),
+                IconButton(
+                  icon: Icon(_isCalendarView ? Icons.list_rounded : Icons.calendar_month_rounded, color: Colors.indigo.shade700),
+                  onPressed: () => setState(() => _isCalendarView = !_isCalendarView),
+                ),
+                const SizedBox(width: 8),
+                const _StreakBadge(),
+                const SizedBox(width: 8),
+                const _SavingIndicator(),
               ],
             ),
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _SearchBar(controller: _searchController),
-          const SizedBox(height: 6),
-          const _FilterChips(),
-          const SizedBox(height: 6),
-          Expanded(
-              child: _TaskList(onEdit: _openEdit, onDelete: _confirmDelete)),
-        ],
-      ),
+      body: _isCalendarView
+          ? const CalendarViewWidget()
+          : Column(
+              children: [
+                _SearchBar(controller: _searchController),
+                const SizedBox(height: 6),
+                const _FilterChips(),
+                const SizedBox(height: 6),
+                Expanded(
+                    child: _TaskList(onEdit: _openEdit, onDelete: _confirmDelete)),
+              ],
+            ),
       floatingActionButton: _AnimatedNewTaskButton(
         onPressed: () => _openCreate(context),
       ),

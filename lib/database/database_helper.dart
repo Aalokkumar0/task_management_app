@@ -21,7 +21,7 @@ class DatabaseHelper {
     final path = join(dbPath, filePath);
     return await openDatabase(
       path, 
-      version: 2, 
+      version: 3, 
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -30,6 +30,12 @@ class DatabaseHelper {
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE tasks ADD COLUMN recurrence_end_date TEXT');
+    }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE tasks ADD COLUMN subject TEXT');
+      await db.execute('ALTER TABLE tasks ADD COLUMN subject_color TEXT');
+      await db.execute('ALTER TABLE tasks ADD COLUMN sub_tasks TEXT');
+      await db.execute('ALTER TABLE tasks ADD COLUMN focus_minutes INTEGER DEFAULT 0');
     }
   }
 
@@ -43,7 +49,11 @@ class DatabaseHelper {
         status TEXT NOT NULL,
         blocked_by_id TEXT,
         sort_order INTEGER DEFAULT 0,
-        recurrence_end_date TEXT
+        recurrence_end_date TEXT,
+        subject TEXT,
+        subject_color TEXT,
+        sub_tasks TEXT,
+        focus_minutes INTEGER DEFAULT 0
       )
     ''');
   }

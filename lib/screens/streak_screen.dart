@@ -19,17 +19,88 @@ class StreakScreen extends StatelessWidget {
           final history = provider.activeDatesHistory.reversed.toList();
           final streak = provider.dailyStreak;
 
+          final completedCount = provider.allTasks.where((t) => t.isDone).length;
+          final currentXP = completedCount * 100;
+          final currentLevel = (currentXP / 1000).floor() + 1;
+          final progressToNext = (currentXP % 1000) / 1000.0;
+          
+          String title = "Freshman";
+          if (currentLevel == 2) title = "Sophomore";
+          else if (currentLevel == 3) title = "Junior";
+          else if (currentLevel == 4) title = "Senior";
+          else if (currentLevel >= 5) title = "Scholar";
+
           return Column(
             children: [
               const SizedBox(height: 20),
-              Icon(Icons.local_fire_department_rounded, size: 80, color: Colors.orange.shade400),
-              const SizedBox(height: 10),
-              Text(
-                '$streak Day Streak!',
-                style: Theme.of(context).textTheme.headlineMedium!.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange.shade600,
+              
+              // 🎓 XP Level Card
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.indigo.shade600, Colors.indigo.shade400],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(color: Colors.indigo.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
                 ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Level $currentLevel: $title', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text('$currentXP XP Total', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
+                          child: const Icon(Icons.school_rounded, color: Colors.white, size: 30),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: progressToNext,
+                        backgroundColor: Colors.white24,
+                        color: Colors.amberAccent,
+                        minHeight: 8,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('${1000 - (currentXP % 1000)} XP to next level', style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12)),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+              
+              // 🔥 Streak Overview
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.local_fire_department_rounded, size: 40, color: Colors.orange.shade400),
+                  const SizedBox(width: 12),
+                  Text(
+                    '$streak Day Streak!',
+                    style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange.shade600,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 30),
               Expanded(

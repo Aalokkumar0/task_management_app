@@ -94,6 +94,25 @@ class TaskProvider extends ChangeNotifier {
       await prefs.setStringList('active_dates', activeDatesStr);
     }
     _activeDatesHistory = activeDatesStr.map((e) => DateTime.parse(e)).toList();
+
+    await _automateStatuses();
+  }
+
+  Future<void> _automateStatuses() async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+
+    for (int i = 0; i < _tasks.length; i++) {
+      final task = _tasks[i];
+      if (task.status == TaskStatus.todo && !isBlocked(task)) {
+        final taskDate = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day);
+        if (taskDate.isBefore(todayDate) || taskDate.isAtSameMomentAs(todayDate)) {
+          final updated = task.copyWith(status: TaskStatus.inProgress);
+          _tasks[i] = updated;
+          await DatabaseHelper.instance.updateTask(updated);
+        }
+      }
+    }
   }
 
   // ── Create ────────────────────────────────────────────────────────────────
@@ -104,6 +123,9 @@ class TaskProvider extends ChangeNotifier {
     required TaskStatus status,
     String? blockedById,
     DateTime? recurrenceEndDate,
+    String? subject,
+    String? subjectColor,
+    List<SubTask> subTasks = const [],
   }) async {
     _isSaving = true;
     notifyListeners();
@@ -120,10 +142,15 @@ class TaskProvider extends ChangeNotifier {
       blockedById: blockedById,
       sortOrder: _tasks.length,
       recurrenceEndDate: recurrenceEndDate,
+      subject: subject,
+      subjectColor: subjectColor,
+      subTasks: subTasks,
     );
 
     await DatabaseHelper.instance.insertTask(task);
     _tasks.add(task);
+
+    await _automateStatuses();
 
     _isSaving = false;
     notifyListeners();
@@ -168,6 +195,8 @@ class TaskProvider extends ChangeNotifier {
       }
     }
 
+    await _automateStatuses();
+
     _isSaving = false;
     notifyListeners();
   }
@@ -180,6 +209,9 @@ class TaskProvider extends ChangeNotifier {
     _tasks = _tasks
         .map((t) => t.blockedById == id ? t.copyWith(clearBlockedBy: true) : t)
         .toList();
+        
+    await _automateStatuses();
+
     notifyListeners();
   }
 

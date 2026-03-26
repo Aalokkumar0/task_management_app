@@ -22,6 +22,10 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
+  late final TextEditingController _subjectCtrl;
+  Color? _subjectColor;
+  List<SubTask> _subTasks = [];
+  final TextEditingController _subTaskCtrl = TextEditingController();
   late DateTime _dueDate;
   late TaskStatus _status;
   String? _blockedById;
@@ -39,6 +43,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       _dueDate = t.dueDate;
       _status = t.status;
       _blockedById = t.blockedById;
+      _subjectCtrl = TextEditingController(text: t.subject ?? '');
+      _subjectColor = t.subjectColor != null ? Color(int.parse(t.subjectColor!)) : Colors.indigo;
+      _subTasks = t.subTasks.map((e) => SubTask(title: e.title, isDone: e.isDone)).toList();
     } else {
       // For new tasks, load draft
       final draft = context.read<DraftProvider>();
@@ -47,6 +54,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
       _dueDate = DateTime.now().add(const Duration(days: 1));
       _status = TaskStatus.todo;
       _blockedById = null;
+      _subjectCtrl = TextEditingController();
+      _subjectColor = Colors.indigo;
+      _subTasks = [];
     }
 
     // Auto-save draft while typing (new tasks only)
@@ -67,6 +77,8 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   void dispose() {
     _titleCtrl.dispose();
     _descCtrl.dispose();
+    _subjectCtrl.dispose();
+    _subTaskCtrl.dispose();
     super.dispose();
   }
 
@@ -94,6 +106,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         status: _status,
         blockedById: _blockedById,
         clearBlockedBy: _blockedById == null,
+        subject: _subjectCtrl.text.trim().isEmpty ? null : _subjectCtrl.text.trim(),
+        subjectColor: _subjectColor?.toARGB32().toString(),
+        subTasks: _subTasks,
       );
       await provider.updateTask(updated);
     } else {
@@ -104,6 +119,9 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
         status: _status,
         blockedById: _blockedById,
         recurrenceEndDate: _isRepeatingDaily ? _endDate : null,
+        subject: _subjectCtrl.text.trim().isEmpty ? null : _subjectCtrl.text.trim(),
+        subjectColor: _subjectColor?.toARGB32().toString(),
+        subTasks: _subTasks,
       );
       // Clear draft on successful create
       if (mounted) context.read<DraftProvider>().clearDraft();
@@ -183,6 +201,114 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
 
             const SizedBox(height: 20),
 
+            // ── Subject / Course ──────────────────────────────────────────
+            const _FormLabel('Subject / Course (Optional)'),
+            const SizedBox(height: 6),
+            TextFormField(
+              controller: _subjectCtrl,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                hintText: 'e.g. Math, History, CS101',
+                prefixIcon: Icon(Icons.class_rounded, color: _subjectCtrl.text.isNotEmpty ? (_subjectColor ?? color.primary) : null),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade300)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.grey.shade300)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: color.primary)),
+              ),
+            ),
+            if (_subjectCtrl.text.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [Colors.indigo, Colors.red, Colors.blue, Colors.green, Colors.orange, Colors.purple, Colors.teal].map((c) {
+                     return GestureDetector(
+                       onTap: () => setState(() => _subjectColor = c),
+                       child: Container(
+                         margin: const EdgeInsets.only(right: 12),
+                         width: 32, height: 32,
+                         decoration: BoxDecoration(
+                           color: c.withValues(alpha: 0.15),
+                           border: Border.all(color: _subjectColor == c ? c : Colors.transparent, width: 2),
+                           shape: BoxShape.circle,
+                         ),
+                         child: Center(child: CircleAvatar(radius: 10, backgroundColor: c)),
+                       ),
+                     );
+                  }).toList(),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+
+            // ── Sub-Tasks ──────────────────────────────────────────
+            const _FormLabel('Sub-Tasks / Checklist'),
+            const SizedBox(height: 6),
+            ..._subTasks.asMap().entries.map((e) {
+              final idx = e.key;
+              final st = e.value;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.only(left: 8, right: 0),
+                  leading: Checkbox(
+                    value: st.isDone,
+                    onChanged: (v) => setState(() => st.isDone = v ?? false),
+                    activeColor: _subjectColor ?? color.primary,
+                  ),
+                  title: Text(st.title, style: TextStyle(
+                    decoration: st.isDone ? TextDecoration.lineThrough : null,
+                    color: st.isDone ? Colors.grey : Colors.black87,
+                  )),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                    onPressed: () => setState(() => _subTasks.removeAt(idx)),
+                  ),
+                ),
+              );
+            }),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                children: [
+                   Expanded(
+                    child: TextField(
+                      controller: _subTaskCtrl,
+                      decoration: const InputDecoration(
+                        hintText: 'Add a sub-task...', 
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                      ),
+                      onSubmitted: (v) {
+                         if (v.trim().isNotEmpty) {
+                           setState(() { _subTasks.add(SubTask(title: v.trim())); _subTaskCtrl.clear(); });
+                         }
+                      },
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.add_circle_rounded, color: _subjectColor ?? color.primary),
+                    onPressed: () {
+                         if (_subTaskCtrl.text.trim().isNotEmpty) {
+                           setState(() { _subTasks.add(SubTask(title: _subTaskCtrl.text.trim())); _subTaskCtrl.clear(); });
+                         }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
             // ── Due Date ──────────────────────────────────────────────────
             const _FormLabel('Due Date'),
             const SizedBox(height: 6),
@@ -224,7 +350,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
                         _endDate = _dueDate.add(const Duration(days: 30));
                       }
                     }),
-                    activeColor: color.primary,
+                    activeThumbColor: color.primary,
                   ),
                   const SizedBox(width: 8),
                   const Text('Repeat Daily', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/task.dart';
 import 'package:task_management_app/ theme/app_theme.dart';
+import '../screens/pomodoro_screen.dart';
 
 class TaskCard extends StatefulWidget {
   final Task task;
@@ -79,6 +80,9 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
     final isBlocked = widget.isBlocked;
 
     final isOverdue = !task.isDone && task.dueDate.isBefore(DateTime.now());
+    final diffDays = DateTime(task.dueDate.year, task.dueDate.month, task.dueDate.day)
+        .difference(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day)).inDays;
+    final isUrgent = !task.isDone && diffDays >= 0 && diffDays <= 3;
 
     final statusColor = isBlocked
         ? AppTheme.colorBlocked
@@ -142,6 +146,30 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (task.subject != null) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(left: 40, bottom: 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: task.subjectColor != null 
+                                      ? Color(int.parse(task.subjectColor!)).withValues(alpha: 0.15)
+                                      : Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  task.subject!,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: task.subjectColor != null 
+                                        ? Color(int.parse(task.subjectColor!))
+                                        : Theme.of(context).colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                           // 🎯 Title row
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
@@ -176,6 +204,12 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                                   highlightColor: color.primaryContainer,
                                 ),
                               ),
+                              if (!_isCurrentlyDone)
+                                IconButton(
+                                  icon: const Icon(Icons.timer_outlined, color: Colors.indigo),
+                                  tooltip: 'Start Pomodoro',
+                                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PomodoroScreen(task: task))),
+                                ),
                             ],
                           ),
 
@@ -192,6 +226,37 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                                   color: color.onSurface.withValues(alpha: 0.6),
                                   height: 1.4,
                                 ),
+                              ),
+                            ),
+                          ],
+
+                          if (task.subTasks.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 40, right: 16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${task.subTasks.where((s) => s.isDone).length}/${task.subTasks.length} Sub-tasks',
+                                        style: theme.textTheme.labelSmall!.copyWith(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: task.subTasks.where((s) => s.isDone).length / task.subTasks.length,
+                                      backgroundColor: Colors.grey.shade200,
+                                      color: task.subjectColor != null ? Color(int.parse(task.subjectColor!)) : color.primary,
+                                      minHeight: 6,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -216,6 +281,18 @@ class _TaskCardState extends State<TaskCard> with SingleTickerProviderStateMixin
                                       ? Colors.red
                                       : color.onSurface.withValues(alpha: 0.5),
                                 ),
+                                if (isUrgent)
+                                  _ModernChip(
+                                    icon: Icons.warning_amber_rounded,
+                                    label: diffDays == 0 ? 'Due Today!' : '$diffDays Days Left',
+                                    color: Colors.orange.shade700,
+                                  ),
+                                if (task.focusMinutes > 0)
+                                  _ModernChip(
+                                    icon: Icons.local_fire_department,
+                                    label: '${task.focusMinutes}m Focused',
+                                    color: Colors.purple.shade400,
+                                  ),
                                 if (isBlocked && widget.blockerTitle != null)
                                   const _ModernChip(
                                     icon: Icons.lock_rounded,
